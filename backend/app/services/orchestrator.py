@@ -132,21 +132,51 @@ class ScanOrchestrator:
             db.commit()
 
             ai_limit = 20
-            for finding in findings[:ai_limit]:
-                explanation = self.ai.explain_finding(
-                    title=finding.title,
-                    finding_type=finding.finding_type.value,
-                    severity=finding.severity.value,
-                    cwe_id=finding.cwe_id,
-                    category=finding.category,
-                    file_path=finding.file_path,
-                    line_number=finding.line_number,
-                    description=finding.description,
-                    code_snippet=finding.code_snippet,
-                )
-                finding.ai_explanation = explanation.explanation
-                finding.exploitation_scenario = explanation.exploitation_scenario
-                finding.fix_snippet = explanation.fix_snippet
+            findings_to_explain = findings[:ai_limit]
+
+            from concurrent.futures import ThreadPoolExecutor
+
+            # Extract plain dict of parameters for each finding to avoid cross-thread DB operations
+            tasks = []
+            for idx, finding in enumerate(findings_to_explain):
+                tasks.append({
+                    "index": idx,
+                    "params": {
+                        "title": finding.title,
+                        "finding_type": finding.finding_type.value,
+                        "severity": finding.severity.value,
+                        "cwe_id": finding.cwe_id,
+                        "category": finding.category,
+                        "file_path": finding.file_path,
+                        "line_number": finding.line_number,
+                        "description": finding.description,
+                        "code_snippet": finding.code_snippet,
+                    }
+                })
+
+            def explain_one(task):
+                try:
+                    explanation = self.ai.explain_finding(**task["params"])
+                    return task["index"], explanation
+                except Exception:
+                    return task["index"], None
+
+            max_workers = min(5, len(tasks)) if tasks else 1
+            explanations_by_index = {}
+            if tasks:
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    results = executor.map(explain_one, tasks)
+                    for idx, explanation in results:
+                        if explanation:
+                            explanations_by_index[idx] = explanation
+
+            # Apply explanations to database objects in the main thread
+            for idx, finding in enumerate(findings_to_explain):
+                explanation = explanations_by_index.get(idx)
+                if explanation:
+                    finding.ai_explanation = explanation.explanation
+                    finding.exploitation_scenario = explanation.exploitation_scenario
+                    finding.fix_snippet = explanation.fix_snippet
             db.commit()
 
             report_path = settings.reports_path / f"report_{session.id}.pdf"
