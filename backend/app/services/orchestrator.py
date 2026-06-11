@@ -131,8 +131,16 @@ class ScanOrchestrator:
             session.status = ScanStatus.AI_RUNNING
             db.commit()
 
-            ai_limit = 20
-            findings_to_explain = findings[:ai_limit]
+            # Prioritize findings: explain the top 3 most severe first (Critical > High > Medium > Low)
+            severity_order = {
+                Severity.CRITICAL: 0,
+                Severity.HIGH: 1,
+                Severity.MEDIUM: 2,
+                Severity.LOW: 3,
+            }
+            sorted_findings = sorted(findings, key=lambda f: severity_order.get(f.severity, 4))
+            ai_limit = 3
+            findings_to_explain = sorted_findings[:ai_limit]
 
             from concurrent.futures import ThreadPoolExecutor
 

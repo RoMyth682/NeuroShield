@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.config import settings
 from app.database import SessionLocal, get_db
-from app.models.scan import ScanSession, ScanStatus, Severity
+from app.models.scan import ScanFinding, ScanSession, ScanStatus, Severity
 from app.models.user import User
 from app.schemas.scan import (
     FindingResponse,
@@ -165,14 +165,81 @@ def download_report(
     session = _get_user_session(db, session_id, current_user)
     if session.status != ScanStatus.COMPLETED:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Report not ready yet")
-    if not session.report_path or not Path(session.report_path).exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report file not found")
+
+    # Regenerate the report dynamically to include any on-demand AI explanations generated since the initial scan
+    try:
+        report_path = settings.reports_path / f"report_{session.id}.pdf"
+        orchestrator.reporter.generate(session, session.findings, report_path)
+        session.report_path = str(report_path)
+        db.commit()
+    except Exception as exc:
+        logger.exception("Failed to regenerate report dynamically")
+        # Fall back to existing report if regeneration fails
+        if not session.report_path or not Path(session.report_path).exists():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report file not found")
 
     return FileResponse(
         session.report_path,
         media_type="application/pdf",
         filename=f"neuroshield_report_{session_id}.pdf",
     )
+
+
+@router.post("/finding/{finding_id}/explain", response_model=FindingResponse)
+def explain_finding(
+    finding_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    finding = db.get(ScanFinding, finding_id)
+    if not finding:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+
+    # Check if user has access to this scan session
+    session = db.get(ScanSession, finding.session_id)
+    if not session or (session.user_id != current_user.id and current_user.role.value != "admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this finding")
+
+    # If already has explanation, return it
+    if finding.ai_explanation:
+        return finding
+
+    # Generate explanation
+    ai = AIExplainer()
+    if not ai.is_available:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="AI Explainer is not configured or available")
+
+    try:
+        explanation = ai.explain_finding(
+            title=finding.title,
+            finding_type=finding.finding_type.value,
+            severity=finding.severity.value,
+            cwe_id=finding.cwe_id,
+            category=finding.category,
+            file_path=finding.file_path,
+            line_number=finding.line_number,
+            description=finding.description,
+            code_snippet=finding.code_snippet,
+        )
+        finding.ai_explanation = explanation.explanation
+        finding.exploitation_scenario = explanation.exploitation_scenario
+        finding.fix_snippet = explanation.fix_snippet
+        db.commit()
+        db.refresh(finding)
+
+        # Regenerate report so that it is cached on disk too
+        report_path = settings.reports_path / f"report_{session.id}.pdf"
+        orchestrator.reporter.generate(session, session.findings, report_path)
+        session.report_path = str(report_path)
+        db.commit()
+
+        return finding
+    except Exception as e:
+        logger.exception("Failed to generate AI explanation on-demand for finding %s", finding_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate explanation: {str(e)}",
+        )
 
 
 def _get_user_session(db: Session, session_id: int, user: User) -> ScanSession:

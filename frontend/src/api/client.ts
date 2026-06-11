@@ -103,6 +103,8 @@ export const scanApi = {
     }),
   downloadReport: (sessionId: number) =>
     api.get(`/scan/${sessionId}/report`, { responseType: "blob" }),
+  explainFinding: (findingId: number) =>
+    api.post<Finding>(`/scan/finding/${findingId}/explain`),
 };
 
 export const adminApi = {

@@ -76,7 +76,7 @@ export default function Upload() {
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
       >
-        <div className="dropzone-icon">📁</div>
+        <div className="dropzone-icon-wrapper">📁</div>
         {file ? (
           <>
             <p className="file-name">{file.name}</p>

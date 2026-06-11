@@ -1,45 +1,73 @@
 .page {
-  padding: 2.5rem 1.5rem;
+  padding: 3rem 1.5rem;
 }
 
 .page h1 {
   margin-bottom: 0.5rem;
+  font-size: 1.8rem;
+  font-weight: 700;
 }
 
 .page-subtitle {
   color: var(--muted);
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
 }
 
 .dropzone {
   text-align: center;
-  padding: 3rem 2rem;
-  border-style: dashed;
-  transition: border-color 0.2s, background 0.2s;
+  padding: 4rem 2rem;
+  border: 2px dashed var(--border);
+  background: rgba(17, 24, 39, 0.4);
+  border-radius: var(--radius);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dropzone:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.02);
 }
 
 .dropzone.dragging {
   border-color: var(--primary);
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(59, 130, 246, 0.06);
 }
 
 .dropzone.has-file {
-  border-color: var(--low);
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.02);
 }
 
-.dropzone-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+.dropzone-icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  font-size: 1.5rem;
+  margin-bottom: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.dropzone:hover .dropzone-icon-wrapper {
+  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.05);
+  transform: scale(1.05);
 }
 
 .dropzone-hint {
   color: var(--muted);
   margin: 0.75rem 0;
+  font-size: 0.9rem;
 }
 
 .file-name {
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
 }
 
 .file-size {
@@ -51,5 +79,5 @@
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
-  margin-top: 1.25rem;
+  margin-top: 1.5rem;
 }

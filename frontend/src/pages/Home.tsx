@@ -38,22 +38,22 @@ export default function Home() {
 
       <section className="features container">
         <div className="feature-card card">
-          <div className="feature-icon">🔍</div>
+          <div className="feature-icon-wrapper">🔍</div>
           <h3>SAST Scanning</h3>
           <p>Bandit &amp; Semgrep detect OWASP Top 10 patterns in Python, JS, and Java code.</p>
         </div>
         <div className="feature-card card">
-          <div className="feature-icon">📦</div>
+          <div className="feature-icon-wrapper">📦</div>
           <h3>CVE Detection</h3>
           <p>Scans requirements.txt, package.json, and pom.xml against OSV.dev &amp; NVD databases.</p>
         </div>
         <div className="feature-card card">
-          <div className="feature-icon">🤖</div>
+          <div className="feature-icon-wrapper">🤖</div>
           <h3>AI Remediation</h3>
           <p>GPT-4o-mini explains each finding, describes attack scenarios, and suggests code fixes.</p>
         </div>
         <div className="feature-card card">
-          <div className="feature-icon">📄</div>
+          <div className="feature-icon-wrapper">📄</div>
           <h3>PDF Reports</h3>
           <p>Download penetration-test-style reports with executive summaries and detailed findings.</p>
         </div>

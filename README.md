@@ -108,6 +108,7 @@ Neuroshield/
 | POST | `/api/scan/upload` | Upload code (ZIP or source file) |
 | GET | `/api/scan/{id}/status` | Poll analysis progress |
 | GET | `/api/scan/{id}/results` | Get findings |
+| POST | `/api/scan/finding/{id}/explain` | Generate on-demand AI explanation |
 | GET | `/api/scan/{id}/report` | Download PDF report |
 | GET | `/api/admin/stats` | Admin usage statistics |
 | GET | `/api/admin/users` | List users |
@@ -120,10 +121,10 @@ Neuroshield/
 - Drag-and-drop code upload (max 10 MB)
 - Bandit + Semgrep static analysis (scans Python, JS, Go, PHP, Java, and Dockerfile)
 - CVE scanning via requirements.txt and package.json
-- GPT-4o-mini explanations with OWASP fallback
+- GPT-4o-mini explanations (hybrid auto-explain for top 3 + on-demand for rest) with OWASP fallback
 - Severity classification (Critical / High / Medium / Low)
 - Filterable results dashboard with colour-coded badges
-- PDF pentest-style report download
+- PDF pentest-style report download (regenerated dynamically to keep on-demand explanations synced)
 - Admin dashboard (stats, user management, scan history)
 
 ## Team

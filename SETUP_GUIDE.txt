@@ -17,8 +17,8 @@ in source code. When you upload code, it:
 
   1. Scans source files for OWASP Top 10 vulnerabilities (Bandit + Semgrep)
   2. Checks dependencies (requirements.txt, package.json) against CVE databases
-  3. Uses OpenAI GPT-4o-mini to explain each issue in plain English
-  4. Suggests code fixes and generates a downloadable PDF security report
+  3. Uses OpenAI GPT-4o-mini to explain findings (hybrid mode: top 3 auto, rest on-demand)
+  4. Suggests code fixes and generates a dynamically updated PDF security report
 
 It is built as:
   - Backend  → Python + FastAPI  (runs on port 8000)
@@ -198,9 +198,9 @@ Step 6 — Download PDF Report
   ✓ Bandit static analysis for Python
   ✓ Semgrep rules for OWASP patterns
   ✓ CVE dependency scanning via OSV.dev and NVD APIs
-  ✓ GPT-4o-mini AI explanations + fix suggestions
+  ✓ GPT-4o-mini AI explanations + fix suggestions (top 3 auto-generated, others on-demand)
   ✓ Severity dashboard with filters
-  ✓ PDF penetration-test-style report
+  ✓ PDF penetration-test-style report (regenerates dynamically on download)
   ✓ Admin panel (user management, scan stats)
 
 

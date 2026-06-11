@@ -19,7 +19,7 @@ with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as tmp:
     output_file = tmp.name
 
 proc = subprocess.run(
-    [semgrep_exe, '--config', rules, '--json', '--quiet', '--output', output_file, str(root)],
+    [semgrep_exe, '--config', rules, '--json', '--quiet', '--no-git-ignore', '--output', output_file, str(root)],
     capture_output=True, text=True, timeout=60
 )
 print('Return code:', proc.returncode)

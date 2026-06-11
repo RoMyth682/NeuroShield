@@ -64,6 +64,7 @@ class AIExplainer:
                 ],
                 temperature=0.2,
                 max_tokens=800,
+                timeout=8.0,
             )
             content = response.choices[0].message.content or "{}"
             content = content.strip()

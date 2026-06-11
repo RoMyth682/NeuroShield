@@ -48,6 +48,13 @@ export default function Dashboard() {
     }
   };
 
+  const handleExplain = async (findingId: number) => {
+    const { data } = await scanApi.explainFinding(findingId);
+    setFindings((prev) =>
+      prev.map((f) => (f.id === findingId ? data : f))
+    );
+  };
+
   if (loading) return <div className="container page">Loading results...</div>;
 
   return (
@@ -110,7 +117,7 @@ export default function Dashboard() {
       ) : (
         <div className="findings-list">
           {findings.map((f) => (
-            <FindingCard key={f.id} finding={f} />
+            <FindingCard key={f.id} finding={f} onExplain={handleExplain} />
           ))}
         </div>
       )}
@@ -127,7 +134,21 @@ function SummaryCard({ label, count, color }: { label: string; count: number; co
   );
 }
 
-function FindingCard({ finding }: { finding: Finding }) {
+function FindingCard({ finding, onExplain }: { finding: Finding; onExplain: (id: number) => Promise<void> }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleExplainClick = async () => {
+    setLoading(true);
+    try {
+      await onExplain(finding.id);
+    } catch (err) {
+      console.error("Failed to explain finding:", err);
+      alert("Failed to generate AI explanation. Please check backend logs/API key config.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="card finding-card">
       <div className="finding-header">
@@ -155,22 +176,45 @@ function FindingCard({ finding }: { finding: Finding }) {
       {finding.code_snippet && (
         <pre className="code-snippet">{finding.code_snippet}</pre>
       )}
-      {finding.ai_explanation && (
-        <div className="ai-section">
-          <h4>AI Explanation</h4>
-          <p>{finding.ai_explanation}</p>
+      {(finding.ai_explanation || finding.exploitation_scenario || finding.fix_snippet) ? (
+        <div className="ai-container">
+          <div className="ai-container-header">
+            <span className="ai-badge">🤖 AI Remediation Insights</span>
+          </div>
+          {finding.ai_explanation && (
+            <div className="ai-section">
+              <h4>Vulnerability Analysis</h4>
+              <p>{finding.ai_explanation}</p>
+            </div>
+          )}
+          {finding.exploitation_scenario && (
+            <div className="ai-section exploit">
+              <h4>Exploitation Scenario</h4>
+              <p>{finding.exploitation_scenario}</p>
+            </div>
+          )}
+          {finding.fix_snippet && (
+            <div className="ai-section fix">
+              <h4>Suggested Remediation</h4>
+              <pre className="code-snippet fix-code">{finding.fix_snippet}</pre>
+            </div>
+          )}
         </div>
-      )}
-      {finding.exploitation_scenario && (
-        <div className="ai-section exploit">
-          <h4>Exploitation Scenario</h4>
-          <p>{finding.exploitation_scenario}</p>
-        </div>
-      )}
-      {finding.fix_snippet && (
-        <div className="ai-section fix">
-          <h4>Recommended Fix</h4>
-          <pre className="code-snippet">{finding.fix_snippet}</pre>
+      ) : (
+        <div className="ai-trigger-container">
+          <button 
+            className="ai-explain-btn" 
+            onClick={handleExplainClick} 
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="spinner-small"></span> Analyzing finding...
+              </>
+            ) : (
+              <>✨ Explain with AI</>
+            )}
+          </button>
         </div>
       )}
     </div>
