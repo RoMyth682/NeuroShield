@@ -16,13 +16,13 @@
   color: #93c5fd;
   font-size: 0.8rem;
   font-weight: 600;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2.25rem; /* Increased to give breathing room above the main heading */
 }
 
 .hero h1 {
   font-size: clamp(2rem, 5vw, 3.2rem);
-  line-height: 1.15;
-  margin-bottom: 1.25rem;
+  line-height: 1.25; /* Slightly increased for better readability */
+  margin-bottom: 1.5rem;
 }
 
 .gradient-text {
@@ -35,15 +35,18 @@
 .hero-subtitle {
   color: var(--muted);
   max-width: 640px;
-  margin: 0 auto 2rem;
+  margin: 0 auto 2.5rem; /* Increased bottom margin */
   font-size: 1.05rem;
+  line-height: 1.6;
 }
 
 .hero-actions {
   display: flex;
-  gap: 1rem;
+  gap: 1.25rem;
   justify-content: center;
   flex-wrap: wrap;
+  margin-top: 1rem; /* Added explicitly to avoid overlapping with subtitle */
+  margin-bottom: 2rem;
 }
 
 .btn-lg {
@@ -55,7 +58,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1.25rem;
-  margin-top: 2rem;
+  margin-top: 3.5rem; /* Increased to separate hero section cleanly from feature cards */
 }
 
 .feature-card {
