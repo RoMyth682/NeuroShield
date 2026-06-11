@@ -21,9 +21,27 @@ export function Login() {
     }
   };
 
+  const fillAdmin = () => {
+    setEmail("admin@neuroshield.local");
+    setPassword("admin123");
+  };
+
   return (
     <AuthLayout title="Login" subtitle="Access your NeuroShield security dashboard">
       {error && <div className="error-banner">{error}</div>}
+
+      {/* Admin hint */}
+      <div className="admin-hint-box" onClick={fillAdmin} title="Click to fill admin credentials">
+        <div className="admin-hint-icon">🔐</div>
+        <div>
+          <div className="admin-hint-title">Admin Login</div>
+          <div className="admin-hint-creds">
+            <code>admin@neuroshield.local</code> / <code>admin123</code>
+          </div>
+          <div className="admin-hint-sub">Click to auto-fill → grants full admin access</div>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label>Email</label>

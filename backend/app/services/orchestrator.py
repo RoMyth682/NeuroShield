@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.scan import FindingType, ScanFinding, ScanSession, ScanStatus, Severity
+
+from concurrent.futures import ThreadPoolExecutor
 from app.services.ai_explainer import AIExplainer
 from app.services.cve_scanner import CVEScanner
 from app.services.report_generator import ReportGenerator
@@ -131,7 +133,7 @@ class ScanOrchestrator:
             session.status = ScanStatus.AI_RUNNING
             db.commit()
 
-            # Prioritize findings: explain the top 3 most severe first (Critical > High > Medium > Low)
+            # Prioritize findings: explain the top N most severe first (Critical > High > Medium > Low)
             severity_order = {
                 Severity.CRITICAL: 0,
                 Severity.HIGH: 1,
@@ -139,10 +141,7 @@ class ScanOrchestrator:
                 Severity.LOW: 3,
             }
             sorted_findings = sorted(findings, key=lambda f: severity_order.get(f.severity, 4))
-            ai_limit = 3
-            findings_to_explain = sorted_findings[:ai_limit]
-
-            from concurrent.futures import ThreadPoolExecutor
+            findings_to_explain = sorted_findings[:settings.ai_auto_explain_count]
 
             # Extract plain dict of parameters for each finding to avoid cross-thread DB operations
             tasks = []
@@ -169,7 +168,7 @@ class ScanOrchestrator:
                 except Exception:
                     return task["index"], None
 
-            max_workers = min(5, len(tasks)) if tasks else 1
+            max_workers = min(settings.ai_max_workers, len(tasks)) if tasks else 1
             explanations_by_index = {}
             if tasks:
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:

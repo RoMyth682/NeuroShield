@@ -9,7 +9,7 @@ from app.auth import hash_password
 from app.config import settings
 from app.database import Base, SessionLocal, engine
 from app.models.user import User, UserRole
-from app.routers import admin, auth, scan
+from app.routers import admin, auth, scan, settings as settings_router
 
 
 @asynccontextmanager
@@ -36,8 +36,8 @@ def _seed_admin():
     try:
         if not db.query(User).filter(User.role == UserRole.ADMIN).first():
             admin_user = User(
-                email="admin@neuroshield.local",
-                hashed_password=hash_password("admin123"),
+                email=settings.admin_email,
+                hashed_password=hash_password(settings.admin_password),
                 role=UserRole.ADMIN,
             )
             db.add(admin_user)
@@ -47,15 +47,15 @@ def _seed_admin():
 
 
 app = FastAPI(
-    title="NeuroShield API",
-    description="Autonomous Code Security Intelligence Engine",
-    version="1.0.0",
+    title=settings.app_name,
+    description=settings.app_description,
+    version=settings.app_version,
     lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,15 +64,15 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(scan.router)
 app.include_router(admin.router)
+app.include_router(settings_router.router)
 
 
 @app.get("/")
 def root():
     return {
-        "service": "NeuroShield API",
+        "service": settings.app_name,
         "status": "running",
         "message": "This is the backend API. Open the web app or API docs below.",
-        "frontend": "http://localhost:5173",
         "docs": "/docs",
         "health": "/api/health",
     }

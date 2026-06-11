@@ -59,20 +59,23 @@ async def upload_code(
     content = await file.read()
     _validate_upload(file, content)
 
-    session_dir = settings.upload_path / f"session_{current_user.id}_{Path(file.filename).stem}"
-    session_dir.mkdir(parents=True, exist_ok=True)
-    upload_path = session_dir / (file.filename or "upload.zip")
-    upload_path.write_bytes(content)
-
     session = ScanSession(
         user_id=current_user.id,
         status=ScanStatus.PENDING,
         original_filename=file.filename or "unknown",
-        upload_path=str(upload_path),
+        upload_path="",
     )
     db.add(session)
     db.commit()
     db.refresh(session)
+
+    session_dir = settings.upload_path / f"session_{session.id}"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    upload_path = session_dir / (file.filename or "upload.zip")
+    upload_path.write_bytes(content)
+
+    session.upload_path = str(upload_path)
+    db.commit()
 
     extract_preview_dir = session_dir / "preview"
     extract_preview_dir.mkdir(exist_ok=True)
@@ -90,7 +93,7 @@ async def upload_code(
     return ScanUploadResponse(
         session_id=session.id,
         filename=file.filename or "unknown",
-        files=files[:100],
+        files=files[:settings.preview_file_limit],
         message="Upload successful. Analysis started.",
     )
 
@@ -200,8 +203,8 @@ def explain_finding(
     if not session or (session.user_id != current_user.id and current_user.role.value != "admin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this finding")
 
-    # If already has explanation, return it
-    if finding.ai_explanation:
+    # If already has explanation and it is not a fallback explanation, return it
+    if finding.ai_explanation and not finding.ai_explanation.startswith("⚠️ AI Explanation"):
         return finding
 
     # Generate explanation
@@ -239,6 +242,47 @@ def explain_finding(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate explanation: {str(e)}",
+        )
+
+
+from pydantic import BaseModel
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[ChatMessage] = []
+
+@router.post("/finding/{finding_id}/chat")
+def chat_finding(
+    finding_id: int,
+    req: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    finding = db.get(ScanFinding, finding_id)
+    if not finding:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+
+    session = db.get(ScanSession, finding.session_id)
+    if not session or (session.user_id != current_user.id and current_user.role.value != "admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this finding")
+
+    ai = AIExplainer()
+    try:
+        response_text = ai.chat_vulnerability(
+            finding=finding,
+            new_message=req.message,
+            history=req.history
+        )
+        return {"message": response_text}
+    except Exception as e:
+        logger.exception("AI Chat failed for finding %s", finding_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to communicate with AI: {str(e)}"
         )
 
 

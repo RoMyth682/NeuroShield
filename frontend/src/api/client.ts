@@ -16,6 +16,13 @@ export interface User {
   id: number;
   email: string;
   role: "admin" | "developer";
+  created_at?: string;
+  scan_count?: number;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 export interface TokenResponse {
@@ -105,13 +112,48 @@ export const scanApi = {
     api.get(`/scan/${sessionId}/report`, { responseType: "blob" }),
   explainFinding: (findingId: number) =>
     api.post<Finding>(`/scan/finding/${findingId}/explain`),
+  chatFinding: (findingId: number, message: string, history: ChatMessage[]) =>
+    api.post<{ message: string }>(`/scan/finding/${findingId}/chat`, { message, history }),
 };
 
 export const adminApi = {
-  stats: () => api.get("/admin/stats"),
+  stats: () => api.get<{ total_scans: number; completed_scans: number; failed_scans: number; total_users: number }>("/admin/stats"),
   users: () => api.get<User[]>("/admin/users"),
   deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
-  scans: () => api.get("/admin/scans"),
+  changeRole: (id: number, role: string) => api.patch<User>(`/admin/users/${id}/role`, { role }),
+  scans: () => api.get<{
+    id: number; user_id: number; user_email: string;
+    filename: string; status: string;
+    created_at: string; completed_at: string | null;
+  }[]>("/admin/scans"),
+};
+
+export interface AIModel {
+  id: string;
+  name: string;
+  provider: string;
+}
+
+export interface AISettingsResponse {
+  groq_api_key: string;
+  openai_api_key: string;
+  gemini_api_key: string;
+  active_provider: string;
+  active_model: string;
+  groq_models: AIModel[];
+  openai_models: AIModel[];
+  gemini_models: AIModel[];
+}
+
+export const settingsApi = {
+  get: () => api.get<AISettingsResponse>("/settings"),
+  update: (patch: {
+    groq_api_key?: string;
+    openai_api_key?: string;
+    gemini_api_key?: string;
+    groq_model?: string;
+    openai_model?: string;
+  }) => api.patch<AISettingsResponse>("/settings", patch),
 };
 
 export default api;

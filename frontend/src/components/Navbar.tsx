@@ -18,6 +18,7 @@ export default function Navbar() {
             <>
               <Link to="/upload">Scan</Link>
               {user.role === "admin" && <Link to="/admin">Admin</Link>}
+              {user.role === "admin" && <Link to="/settings">⚙️ Settings</Link>}
               <span className="user-email">{user.email}</span>
               <button
                 className="btn btn-secondary"

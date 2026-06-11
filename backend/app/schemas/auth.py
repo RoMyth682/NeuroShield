@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, Field
 
 from app.models.user import UserRole
@@ -17,6 +19,8 @@ class UserResponse(BaseModel):
     id: int
     email: str
     role: UserRole
+    created_at: datetime | None = None
+    scan_count: int = 0
 
     model_config = {"from_attributes": True}
 

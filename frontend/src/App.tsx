@@ -7,6 +7,7 @@ import Upload from "./pages/Upload";
 import Analysis from "./pages/Analysis";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return (
@@ -45,6 +46,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Admin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />

@@ -5,11 +5,9 @@ from pathlib import Path
 
 import httpx
 
+from app.config import settings
 from app.models.scan import Severity
 from app.services.risk_scoring import cvss_to_severity
-
-OSV_API = "https://api.osv.dev/v1/query"
-NVD_API = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
 
 @dataclass
@@ -44,11 +42,14 @@ class CVEScanner:
         result.packages_checked = len(dependencies)
 
         if not dependencies:
-            result.errors.append("No dependency manifest files found (requirements.txt, package.json, pom.xml)")
+            result.errors.append(
+                "No dependency manifest files found — expected if you uploaded a single source file. "
+                "For CVE scanning, include a requirements.txt, package.json, or pom.xml with your code."
+            )
             return result
 
-        with httpx.Client(timeout=15.0) as client:
-            for dep in dependencies[:50]:
+        with httpx.Client(timeout=settings.cve_http_timeout) as client:
+            for dep in dependencies[:settings.cve_max_packages]:
                 try:
                     findings = self._query_osv(client, dep)
                     if not findings:
@@ -112,7 +113,7 @@ class CVEScanner:
             "package": {"name": dep.name, "ecosystem": dep.ecosystem},
             "version": dep.version,
         }
-        response = client.post(OSV_API, json=payload)
+        response = client.post(settings.osv_api_url, json=payload)
         if response.status_code != 200:
             return []
 
@@ -126,7 +127,7 @@ class CVEScanner:
                     package_version=dep.version,
                     severity=cvss_to_severity(score),
                     cvss_score=score,
-                    description=vuln.get("summary", vuln.get("details", "Known vulnerability"))[:500],
+                    description=vuln.get("summary", vuln.get("details", "Known vulnerability"))[:settings.cve_description_max_length],
                     ecosystem=dep.ecosystem,
                 )
             )
@@ -134,7 +135,7 @@ class CVEScanner:
 
     def _query_nvd(self, client: httpx.Client, dep: Dependency) -> list[CVEFinding]:
         response = client.get(
-            NVD_API,
+            settings.nvd_api_url,
             params={"keywordSearch": f"{dep.name} {dep.version}", "resultsPerPage": 5},
         )
         if response.status_code != 200:
@@ -159,7 +160,7 @@ class CVEScanner:
                     package_version=dep.version,
                     severity=cvss_to_severity(score),
                     cvss_score=score,
-                    description=desc[:500],
+                    description=desc[:settings.cve_description_max_length],
                     ecosystem=dep.ecosystem,
                 )
             )

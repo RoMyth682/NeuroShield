@@ -71,12 +71,11 @@ You can also register a developer account from the Register page.
 
 ## Testing with Sample Code
 
-A vulnerable sample project is included:
+Vulnerable sample projects are included:
 
-```bash
-cd samples/vulnerable_app
-# Zip the folder and upload via the web UI, or upload app.py directly
-```
+- **Python App**: `samples/vulnerable_app/` (Zip the folder and upload the .zip file, or upload `app.py` directly)
+- **Go App**: `samples/vuln_go_app.go` (A newly created vulnerable Go file containing 9 real vulnerabilities including SQL Injection, Command Injection, Path Traversal, SSRF, Weak Crypto, and hardcoded secrets)
+- **Java App**: `samples/VulnerableJavaApp.java`
 
 ## Project Structure
 
@@ -96,7 +95,10 @@ Neuroshield/
 │   └── src/
 │       ├── pages/               # React screens (Home, Auth, Upload, Analysis, Dashboard, Admin)
 │       └── components/
-└── samples/vulnerable_app/    # Test codebase
+└── samples/                     # Test codebases
+    ├── vulnerable_app/          # Python sample app
+    ├── vuln_go_app.go           # Go sample app
+    └── VulnerableJavaApp.java   # Java sample app
 ```
 
 ## API Endpoints
