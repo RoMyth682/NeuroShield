@@ -235,9 +235,10 @@ Fix:     1) Make sure backend venv is active, then run:
          4) Check the yellow/red warning box on results page for errors
          Common cause: Bandit was not installed or not found on Windows.
 
-Problem: Semgrep warnings in backend logs
-Fix:     Optional. Install semgrep: pip install semgrep
-         The app still works with Bandit alone for Python files.
+Problem: Semgrep findings not showing for non-Python files (JS, Go, Java, PHP, Dockerfile)
+Fix:     Make sure Semgrep is installed in your virtual environment by running:
+         pip install -r requirements.txt
+         Semgrep is required to analyze all non-Python source code.
 
 Problem: KeyboardInterrupt or standard streams warning on scan results page
 Fix:     Do not use the "--reload" flag when starting the backend. On Windows,
