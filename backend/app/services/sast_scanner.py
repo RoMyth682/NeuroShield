@@ -183,6 +183,7 @@ class SASTScanner:
                     config,
                     "--json",
                     "--quiet",
+                    "--no-git-ignore",
                     "--output",
                     output_file,
                     str(root),
@@ -192,6 +193,14 @@ class SASTScanner:
                 timeout=60,
             )
             output_path = Path(output_file)
+
+            if proc.returncode != 0 and (not output_path.exists() or output_path.stat().st_size == 0):
+                stderr_msg = proc.stderr.strip()
+                if stderr_msg:
+                    result.errors.append(f"Semgrep execution error: {stderr_msg[:300]}")
+                else:
+                    result.errors.append(f"Semgrep exited with code {proc.returncode}")
+
             if output_path.exists() and output_path.stat().st_size > 0:
                 data = json.loads(output_path.read_text(encoding="utf-8"))
                 for item in data.get("results", []):

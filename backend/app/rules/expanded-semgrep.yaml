@@ -280,9 +280,9 @@ rules:
       owasp: ["A02:2021-Cryptographic Failures"]
       cwe: ["CWE-798"]
     pattern-either:
-      - pattern: String password = "..."
-      - pattern: String secret = "..."
-      - pattern: String apiKey = "..."
+      - pattern: String password = "...";
+      - pattern: String secret = "...";
+      - pattern: String apiKey = "...";
 
   - id: java-insecure-deserialization
     languages: [java]
