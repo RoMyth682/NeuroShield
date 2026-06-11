@@ -1,0 +1,289 @@
+================================================================================
+  NEUROSHIELD — SETUP & RUN GUIDE
+  Autonomous Code Security Intelligence Engine
+  NGIT Mini Project (CSE Department)
+================================================================================
+
+Hello! This guide explains what is in this project folder and how to run it
+on your computer. Read this file first before doing anything else.
+
+
+--------------------------------------------------------------------------------
+1. WHAT IS NEUROSHIELD?
+--------------------------------------------------------------------------------
+
+NeuroShield is a web application that helps developers find security problems
+in source code. When you upload code, it:
+
+  1. Scans source files for OWASP Top 10 vulnerabilities (Bandit + Semgrep)
+  2. Checks dependencies (requirements.txt, package.json) against CVE databases
+  3. Uses OpenAI GPT-4o-mini to explain each issue in plain English
+  4. Suggests code fixes and generates a downloadable PDF security report
+
+It is built as:
+  - Backend  → Python + FastAPI  (runs on port 8000)
+  - Frontend → React + Vite      (runs on port 5173)
+
+
+--------------------------------------------------------------------------------
+2. WHAT IS INSIDE THIS FOLDER?
+--------------------------------------------------------------------------------
+
+Neuroshield/
+│
+├── SETUP_GUIDE.txt          ← You are reading this file
+├── README.md                ← Technical documentation (optional read)
+│
+├── backend/                 ← Python API server
+│   ├── app/
+│   │   ├── main.py          ← Server entry point
+│   │   ├── auth.py          ← Login / password security
+│   │   ├── routers/         ← API endpoints (auth, scan, admin)
+│   │   ├── services/        ← SAST, CVE scan, AI, PDF report logic
+│   │   ├── rules/           ← Semgrep security rules
+│   │   └── prompts/         ← AI prompt templates
+│   ├── requirements.txt     ← Python packages to install
+│   ├── .env.example         ← Copy this to .env and add your API key
+│   └── neuroshield.db       ← SQLite database (created after first run)
+│
+├── frontend/                ← React web interface
+│   ├── src/pages/           ← All screens (Home, Login, Upload, Dashboard…)
+│   ├── package.json         ← JavaScript packages to install
+│   └── vite.config.ts       ← Dev server config
+│
+└── samples/
+    └── vulnerable_app/      ← TEST CODE with intentional bugs (for demo)
+        ├── app.py           ← Vulnerable Python file
+        └── requirements.txt ← Old packages with known CVEs
+
+
+--------------------------------------------------------------------------------
+3. WHAT YOU NEED TO INSTALL FIRST (one-time)
+--------------------------------------------------------------------------------
+
+Install these on your PC before running the project:
+
+  [Required]
+  • Python 3.10 or newer
+    Download: https://www.python.org/downloads/
+    During install, CHECK "Add Python to PATH"
+
+  • Node.js 18 or newer (includes npm)
+    Download: https://nodejs.org/
+
+  [Required for AI explanations]
+  • OpenAI API key
+    Get one at: https://platform.openai.com/api-keys
+    (Without this, SAST and CVE results still work — only AI text is skipped)
+
+  [Optional but recommended]
+  • Semgrep CLI (extra multi-language scanning)
+    Install: pip install semgrep
+    Or see: https://semgrep.dev/docs/getting-started/
+
+
+--------------------------------------------------------------------------------
+4. HOW TO RUN THE PROJECT (Windows — step by step)
+--------------------------------------------------------------------------------
+
+You need TWO terminal windows open at the same time.
+Use PowerShell or Command Prompt.
+
+--- TERMINAL 1: Start the Backend ---
+
+  cd path\to\Neuroshield\backend
+
+  python -m venv .venv
+
+  .venv\Scripts\activate
+
+  pip install -r requirements.txt
+
+  copy .env.example .env
+
+  Now open .env in Notepad and set your OpenAI key:
+    OPENAI_API_KEY=sk-your-actual-key-here
+
+  uvicorn app.main:app --port 8000
+
+  ✓ Backend is running when you see:
+    "Uvicorn running on http://127.0.0.1:8000"
+
+  Test it: open http://127.0.0.1:8000/docs in browser (API documentation)
+
+
+--- TERMINAL 2: Start the Frontend ---
+
+  cd path\to\Neuroshield\frontend
+
+  npm install
+
+  npm run dev
+
+  ✓ Frontend is running when you see:
+    "Local: http://localhost:5173/"
+
+
+--- OPEN THE APP ---
+
+  Go to:  http://localhost:5173
+
+  (Do NOT use port 8000 for the UI — that is only the API backend)
+
+
+--------------------------------------------------------------------------------
+5. DEFAULT LOGIN CREDENTIALS
+--------------------------------------------------------------------------------
+
+  Admin account (created automatically on first backend start):
+
+    Email:    admin@neuroshield.local
+    Password: admin123
+
+  You can also click "Register" to create a new developer account.
+
+
+--------------------------------------------------------------------------------
+6. HOW TO TEST THE APP (demo walkthrough)
+--------------------------------------------------------------------------------
+
+Step 1 — Login
+  Use the admin account above, or register a new account.
+
+Step 2 — Go to "Scan" (upload page)
+
+Step 3 — Upload test code
+  Use the included sample project:
+
+    Folder:  samples\vulnerable_app\
+
+  BEST TEST: Zip the vulnerable_app folder and upload the .zip file
+             (includes both app.py AND requirements.txt)
+
+  QUICK TEST: Upload only samples\vulnerable_app\app.py
+
+Step 4 — Wait on the Analysis screen
+  The app runs: SAST scan → CVE scan → AI explanations
+
+Step 5 — View Results Dashboard
+  You will see vulnerability cards with severity colours:
+    Critical = Red    High = Orange    Medium = Yellow    Low = Green
+
+Step 6 — Download PDF Report
+  Click "Download PDF Report" on the results page.
+
+
+--------------------------------------------------------------------------------
+7. WHAT THE SAMPLE VULNERABLE CODE CONTAINS
+--------------------------------------------------------------------------------
+
+  samples\vulnerable_app\app.py has intentional security flaws:
+
+    • Hardcoded API key and password
+    • SQL injection (string concatenation in query)
+    • Code injection (eval on user input)
+    • Weak random number generation
+
+  samples\vulnerable_app\requirements.txt has old package versions
+  that may match known CVEs when checked against OSV.dev / NVD.
+
+
+--------------------------------------------------------------------------------
+8. MAIN FEATURES (for presentation / viva)
+--------------------------------------------------------------------------------
+
+  ✓ User registration and login (passwords hashed with bcrypt)
+  ✓ Admin vs Developer roles
+  ✓ Drag-and-drop file upload (ZIP or .py / .js / .java, max 10 MB)
+  ✓ Bandit static analysis for Python
+  ✓ Semgrep rules for OWASP patterns
+  ✓ CVE dependency scanning via OSV.dev and NVD APIs
+  ✓ GPT-4o-mini AI explanations + fix suggestions
+  ✓ Severity dashboard with filters
+  ✓ PDF penetration-test-style report
+  ✓ Admin panel (user management, scan stats)
+
+
+--------------------------------------------------------------------------------
+9. COMMON PROBLEMS & FIXES
+--------------------------------------------------------------------------------
+
+Problem: Browser shows {"detail":"Not Found"} at http://127.0.0.1:8000
+Fix:     That is the API only. Open http://localhost:5173 for the web app.
+
+Problem: "pip" or "python" not recognized
+Fix:     Reinstall Python and check "Add Python to PATH", then restart terminal.
+
+Problem: "npm" not recognized
+Fix:     Install Node.js from nodejs.org and restart terminal.
+
+Problem: Admin login does not work
+Fix:     Delete backend\neuroshield.db and restart the backend server.
+         The admin account will be recreated automatically.
+
+Problem: No AI explanations shown
+Fix:     Add a valid OPENAI_API_KEY in backend\.env and restart backend.
+
+Problem: Zero vulnerabilities for every file (including samples)
+Fix:     1) Make sure backend venv is active, then run:
+           pip install -r requirements.txt
+         2) Restart backend from the backend folder:
+           cd backend
+           .venv\Scripts\activate
+           uvicorn app.main:app --port 8000
+         3) Upload samples\vulnerable_app\app.py (should find ~4 issues)
+         4) Check the yellow/red warning box on results page for errors
+         Common cause: Bandit was not installed or not found on Windows.
+
+Problem: Semgrep warnings in backend logs
+Fix:     Optional. Install semgrep: pip install semgrep
+         The app still works with Bandit alone for Python files.
+
+Problem: KeyboardInterrupt or standard streams warning on scan results page
+Fix:     Do not use the "--reload" flag when starting the backend. On Windows,
+         writing uploads or PDF reports will trigger an auto-reload and interrupt
+         running scans. Run the server using: uvicorn app.main:app --port 8000
+
+Problem: Port already in use
+Fix:     Close other apps using port 8000 or 5173, or change the port number.
+
+
+--------------------------------------------------------------------------------
+10. TEAM & PROJECT INFO
+--------------------------------------------------------------------------------
+
+  Project:   NeuroShield — Autonomous Code Security Intelligence Engine
+  Institute: Neil Gogte Institute of Technology (NGIT), Hyderabad
+
+  Team:
+    B. Romith Singh   — SAST Engine, Backend API
+    Deepak Jhanwar    — CVE Scanner, NVD Integration
+    Ansh Sugandhi     — AI Explanation Module, PDF Report
+
+  Guide: Mrs. S. Meghana, Assistant Professor, Dept. of CSE
+
+
+--------------------------------------------------------------------------------
+11. QUICK COMMAND CHEAT SHEET
+--------------------------------------------------------------------------------
+
+  # Backend (Terminal 1)
+  cd backend
+  .venv\Scripts\activate
+  uvicorn app.main:app --port 8000
+
+  # Frontend (Terminal 2)
+  cd frontend
+  npm run dev
+
+  # Open app
+  http://localhost:5173
+
+  # API docs
+  http://127.0.0.1:8000/docs
+
+
+================================================================================
+  If you get stuck, read README.md for more technical details.
+  Good luck with the project!
+================================================================================

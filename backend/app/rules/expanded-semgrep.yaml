@@ -1,0 +1,389 @@
+# NeuroShield — Expanded Multi-Language SAST Rules
+# Covers: Python, JavaScript, TypeScript, Java, Go, PHP, Dockerfile
+# OWASP Top 10 (2021) patterns
+
+rules:
+
+  # ─────────────────────────────────────────────
+  # PYTHON RULES
+  # ─────────────────────────────────────────────
+
+  - id: py-sql-injection-execute
+    languages: [python]
+    severity: ERROR
+    message: "SQL injection via string formatting in cursor.execute(). Use parameterized queries: cursor.execute(sql, params)"
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-89"]
+    pattern-either:
+      - pattern: $CUR.execute("..." % $VAR)
+      - pattern: $CUR.execute(f"...{$VAR}...")
+      - pattern: $CUR.execute("..." + $VAR)
+      - pattern: $CUR.execute($QUERY.format(...))
+
+  - id: py-eval-injection
+    languages: [python]
+    severity: ERROR
+    message: "eval() executes arbitrary code. Avoid eval() with any user-controlled input."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-95"]
+    pattern: eval(...)
+
+  - id: py-exec-injection
+    languages: [python]
+    severity: ERROR
+    message: "exec() executes arbitrary code. Avoid exec() with any user-controlled input."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-95"]
+    pattern: exec(...)
+
+  - id: py-subprocess-shell-true
+    languages: [python]
+    severity: ERROR
+    message: "subprocess called with shell=True allows command injection. Pass arguments as a list and omit shell=True."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-78"]
+    pattern-either:
+      - pattern: subprocess.run($CMD, ..., shell=True, ...)
+      - pattern: subprocess.call($CMD, ..., shell=True, ...)
+      - pattern: subprocess.Popen($CMD, ..., shell=True, ...)
+      - pattern: subprocess.check_output($CMD, ..., shell=True, ...)
+
+  - id: py-os-system-injection
+    languages: [python]
+    severity: ERROR
+    message: "os.system() passes input directly to the shell. Use subprocess with a list of arguments instead."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-78"]
+    pattern: os.system($CMD)
+
+  - id: py-pickle-deserialization
+    languages: [python]
+    severity: ERROR
+    message: "Deserializing untrusted data with pickle can lead to arbitrary code execution (RCE)."
+    metadata:
+      owasp: ["A08:2021-Software and Data Integrity Failures"]
+      cwe: ["CWE-502"]
+    pattern-either:
+      - pattern: pickle.load($F)
+      - pattern: pickle.loads($DATA)
+      - pattern: cPickle.load($F)
+      - pattern: cPickle.loads($DATA)
+
+  - id: py-yaml-load-unsafe
+    languages: [python]
+    severity: ERROR
+    message: "yaml.load() with untrusted input can execute arbitrary code. Use yaml.safe_load() instead."
+    metadata:
+      owasp: ["A08:2021-Software and Data Integrity Failures"]
+      cwe: ["CWE-502"]
+    pattern: yaml.load($DATA, ...)
+
+  - id: py-hardcoded-password
+    languages: [python]
+    severity: WARNING
+    message: "Hardcoded password or secret detected. Store secrets in environment variables or a secrets manager."
+    metadata:
+      owasp: ["A02:2021-Cryptographic Failures"]
+      cwe: ["CWE-798"]
+    pattern-either:
+      - pattern: password = "..."
+      - pattern: passwd = "..."
+      - pattern: secret = "..."
+      - pattern: secret_key = "..."
+      - pattern: api_key = "..."
+      - pattern: api_secret = "..."
+      - pattern: token = "..."
+
+  - id: py-insecure-random
+    languages: [python]
+    severity: WARNING
+    message: "random module is not cryptographically secure. Use the secrets module for security-sensitive operations."
+    metadata:
+      owasp: ["A02:2021-Cryptographic Failures"]
+      cwe: ["CWE-330"]
+    pattern: random.$FUNC(...)
+
+  - id: py-flask-debug-true
+    languages: [python]
+    severity: ERROR
+    message: "Flask debug mode enabled exposes an interactive debugger that can execute arbitrary code."
+    metadata:
+      owasp: ["A05:2021-Security Misconfiguration"]
+      cwe: ["CWE-94"]
+    pattern: app.run(..., debug=True, ...)
+
+  - id: py-path-traversal-open
+    languages: [python]
+    severity: WARNING
+    message: "Opening a file path constructed from user input may allow path traversal attacks."
+    metadata:
+      owasp: ["A01:2021-Broken Access Control"]
+      cwe: ["CWE-22"]
+    pattern-either:
+      - pattern: open(request.$ATTR + $PATH)
+      - pattern: open(os.path.join(..., request.$ATTR))
+
+  - id: py-md5-sha1-usage
+    languages: [python]
+    severity: WARNING
+    message: "MD5 and SHA1 are cryptographically broken. Use SHA-256 or stronger."
+    metadata:
+      owasp: ["A02:2021-Cryptographic Failures"]
+      cwe: ["CWE-327"]
+    pattern-either:
+      - pattern: hashlib.md5(...)
+      - pattern: hashlib.sha1(...)
+
+  # ─────────────────────────────────────────────
+  # JAVASCRIPT / TYPESCRIPT RULES
+  # ─────────────────────────────────────────────
+
+  - id: js-eval-injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: "eval() executes arbitrary JavaScript. Never pass user-controlled data to eval()."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-95"]
+    pattern-either:
+      - pattern: eval($X)
+      - pattern: new Function($ARGS)
+
+  - id: js-innerhtml-xss
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: "Setting innerHTML with user input enables XSS attacks. Use textContent or sanitize the input."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-79"]
+    pattern-either:
+      - pattern: $EL.innerHTML = $INPUT
+      - pattern: document.write($INPUT)
+
+  - id: js-child-process-exec
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: "child_process.exec() passes input to a shell. Use execFile() or spawn() with argument arrays."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-78"]
+    pattern-either:
+      - pattern: exec($CMD, ...)
+      - pattern: require('child_process').exec($CMD, ...)
+      - pattern: child_process.exec($CMD, ...)
+
+  - id: js-hardcoded-secret
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: "Hardcoded secret or API key detected. Use environment variables (process.env) instead."
+    metadata:
+      owasp: ["A02:2021-Cryptographic Failures"]
+      cwe: ["CWE-798"]
+    pattern-either:
+      - pattern: const password = "..."
+      - pattern: const secret = "..."
+      - pattern: const apiKey = "..."
+      - pattern: const api_key = "..."
+      - pattern: const token = "..."
+
+  - id: js-prototype-pollution
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: "Possible prototype pollution. Avoid assigning to __proto__, constructor, or prototype from user input."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-1321"]
+    pattern-either:
+      - pattern: $OBJ["__proto__"] = $VAL
+      - pattern: $OBJ[constructor] = $VAL
+
+  - id: js-path-traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: "Path constructed from request input may allow directory traversal attacks."
+    metadata:
+      owasp: ["A01:2021-Broken Access Control"]
+      cwe: ["CWE-22"]
+    pattern-either:
+      - pattern: path.join(__dirname, req.params.$PARAM)
+      - pattern: path.join(__dirname, req.query.$PARAM)
+      - pattern: fs.readFile(req.params.$PARAM, ...)
+      - pattern: fs.readFile(req.query.$PARAM, ...)
+
+  - id: js-sql-injection-template
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: "SQL query built with template literal from user input. Use parameterized queries."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-89"]
+    pattern-either:
+      - pattern: $DB.query(`...${req.params.$P}...`)
+      - pattern: $DB.query(`...${req.query.$P}...`)
+      - pattern: $DB.query(`...${req.body.$P}...`)
+
+  # ─────────────────────────────────────────────
+  # JAVA RULES
+  # ─────────────────────────────────────────────
+
+  - id: java-sql-injection
+    languages: [java]
+    severity: ERROR
+    message: "SQL injection via string concatenation. Use PreparedStatement with ? placeholders."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-89"]
+    pattern-either:
+      - pattern: $STMT.executeQuery($SQL + $VAR)
+      - pattern: $STMT.execute($SQL + $VAR)
+      - pattern: $STMT.executeUpdate($SQL + $VAR)
+
+  - id: java-command-injection
+    languages: [java]
+    severity: ERROR
+    message: "Runtime.exec() or ProcessBuilder with user input can lead to command injection."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-78"]
+    pattern-either:
+      - pattern: Runtime.getRuntime().exec($CMD)
+      - pattern: new ProcessBuilder($CMD)
+
+  - id: java-xxe-saxparser
+    languages: [java]
+    severity: ERROR
+    message: "SAXParser without disabling external entity processing is vulnerable to XXE attacks."
+    metadata:
+      owasp: ["A05:2021-Security Misconfiguration"]
+      cwe: ["CWE-611"]
+    pattern: SAXParserFactory.newInstance().newSAXParser()
+
+  - id: java-insecure-random
+    languages: [java]
+    severity: WARNING
+    message: "java.util.Random is not cryptographically secure. Use java.security.SecureRandom instead."
+    metadata:
+      owasp: ["A02:2021-Cryptographic Failures"]
+      cwe: ["CWE-330"]
+    pattern: new Random()
+
+  - id: java-hardcoded-password
+    languages: [java]
+    severity: WARNING
+    message: "Hardcoded password or secret in source code. Use environment variables or a secrets manager."
+    metadata:
+      owasp: ["A02:2021-Cryptographic Failures"]
+      cwe: ["CWE-798"]
+    pattern-either:
+      - pattern: String password = "..."
+      - pattern: String secret = "..."
+      - pattern: String apiKey = "..."
+
+  - id: java-insecure-deserialization
+    languages: [java]
+    severity: ERROR
+    message: "Deserializing untrusted data with ObjectInputStream can lead to RCE."
+    metadata:
+      owasp: ["A08:2021-Software and Data Integrity Failures"]
+      cwe: ["CWE-502"]
+    pattern: new ObjectInputStream($STREAM)
+
+  # ─────────────────────────────────────────────
+  # GO RULES
+  # ─────────────────────────────────────────────
+
+  - id: go-sql-injection
+    languages: [go]
+    severity: ERROR
+    message: "SQL query built with fmt.Sprintf allows injection. Use db.Query with ? placeholders."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-89"]
+    pattern-either:
+      - pattern: db.Query(fmt.Sprintf($SQL, $VAR))
+      - pattern: db.Exec(fmt.Sprintf($SQL, $VAR))
+
+  - id: go-command-injection
+    languages: [go]
+    severity: ERROR
+    message: "exec.Command with user-controlled input can lead to command injection."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-78"]
+    pattern: exec.Command($CMD, ...)
+
+  - id: go-hardcoded-secret
+    languages: [go]
+    severity: WARNING
+    message: "Hardcoded secret detected. Use os.Getenv() or a secrets manager."
+    metadata:
+      owasp: ["A02:2021-Cryptographic Failures"]
+      cwe: ["CWE-798"]
+    pattern-either:
+      - pattern: password := "..."
+      - pattern: secret := "..."
+      - pattern: apiKey := "..."
+
+  # ─────────────────────────────────────────────
+  # PHP RULES
+  # ─────────────────────────────────────────────
+
+  - id: php-sql-injection
+    languages: [php]
+    severity: ERROR
+    message: "SQL injection via string concatenation. Use PDO with prepared statements."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-89"]
+    pattern-either:
+      - pattern: mysqli_query($CONN, "..." . $VAR)
+      - pattern: mysql_query("..." . $VAR)
+
+  - id: php-eval-injection
+    languages: [php]
+    severity: ERROR
+    message: "eval() in PHP can execute arbitrary code. Never use eval() with user input."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-95"]
+    pattern: eval($CODE)
+
+  - id: php-system-command-injection
+    languages: [php]
+    severity: ERROR
+    message: "system() and shell_exec() can lead to command injection with user-controlled input."
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-78"]
+    pattern-either:
+      - pattern: system($CMD)
+      - pattern: shell_exec($CMD)
+      - pattern: passthru($CMD)
+      - pattern: exec($CMD)
+
+  # ─────────────────────────────────────────────
+  # DOCKERFILE RULES
+  # ─────────────────────────────────────────────
+
+  - id: dockerfile-user-root
+    languages: [dockerfile]
+    severity: WARNING
+    message: "Container running as root. Add 'USER nonroot' to follow least-privilege principle."
+    metadata:
+      owasp: ["A05:2021-Security Misconfiguration"]
+      cwe: ["CWE-250"]
+    pattern: USER root
+
+  - id: dockerfile-add-instead-of-copy
+    languages: [dockerfile]
+    severity: WARNING
+    message: "ADD can fetch remote URLs and auto-extract archives. Use COPY unless you specifically need ADD's extra features."
+    metadata:
+      owasp: ["A05:2021-Security Misconfiguration"]
+      cwe: ["CWE-494"]
+    pattern: ADD $SRC $DST

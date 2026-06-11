@@ -1,0 +1,16 @@
+fastapi==0.136.3
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+sqlalchemy==2.0.36
+python-jose[cryptography]==3.3.0
+bcrypt==4.2.1
+pydantic[email]==2.10.3
+pydantic-settings==2.6.1
+httpx==0.28.1
+bandit==1.8.0
+reportlab==4.2.5
+openai==1.57.4
+aiofiles==24.1.0
+python-dotenv==1.0.1
+semgrep==1.165.0
+sse-starlette>=1.6.1

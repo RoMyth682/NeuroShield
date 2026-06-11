@@ -1,0 +1,43 @@
+rules:
+  - id: neuroshield-sql-injection-format
+    languages: [python]
+    message: Possible SQL injection via string formatting. Use parameterized queries instead.
+    severity: ERROR
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-89"]
+    pattern-either:
+      - pattern: $CURSOR.execute("..." % $VAR)
+      - pattern: $CURSOR.execute(f"...{$VAR}...")
+      - pattern: $CURSOR.execute("..." + $VAR)
+
+  - id: neuroshield-hardcoded-secret
+    languages: [python, javascript]
+    message: Hardcoded secret or API key detected. Use environment variables instead.
+    severity: WARNING
+    metadata:
+      owasp: ["A02:2021-Cryptographic Failures"]
+      cwe: ["CWE-798"]
+    pattern-either:
+      - pattern: password = "..."
+      - pattern: secret = "..."
+      - pattern: api_key = "..."
+      - pattern: apikey = "..."
+
+  - id: neuroshield-eval-usage
+    languages: [python, javascript]
+    message: Use of eval() can lead to code injection.
+    severity: ERROR
+    metadata:
+      owasp: ["A03:2021-Injection"]
+      cwe: ["CWE-95"]
+    pattern: eval(...)
+
+  - id: neuroshield-insecure-random
+    languages: [python]
+    message: random module is not cryptographically secure. Use secrets module instead.
+    severity: WARNING
+    metadata:
+      owasp: ["A02:2021-Cryptographic Failures"]
+      cwe: ["CWE-330"]
+    pattern: random.$FUNC(...)

@@ -1,0 +1,32 @@
+.severity-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.severity-badge.critical {
+  background: rgba(220, 38, 38, 0.2);
+  color: var(--critical);
+  border: 1px solid var(--critical);
+}
+
+.severity-badge.high {
+  background: rgba(234, 88, 12, 0.2);
+  color: var(--high);
+  border: 1px solid var(--high);
+}
+
+.severity-badge.medium {
+  background: rgba(202, 138, 4, 0.2);
+  color: var(--medium);
+  border: 1px solid var(--medium);
+}
+
+.severity-badge.low {
+  background: rgba(22, 163, 74, 0.2);
+  color: var(--low);
+  border: 1px solid var(--low);
+}

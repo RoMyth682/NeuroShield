@@ -1,0 +1,55 @@
+.page {
+  padding: 2.5rem 1.5rem;
+}
+
+.page h1 {
+  margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+
+.dropzone {
+  text-align: center;
+  padding: 3rem 2rem;
+  border-style: dashed;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.dropzone.dragging {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.dropzone.has-file {
+  border-color: var(--low);
+}
+
+.dropzone-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.dropzone-hint {
+  color: var(--muted);
+  margin: 0.75rem 0;
+}
+
+.file-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.file-size {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.upload-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}

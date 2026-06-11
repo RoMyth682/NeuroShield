@@ -1,0 +1,8 @@
+{
+  "name": "multilang-sample",
+  "version": "1.0.0",
+  "main": "vuln_js/app.js",
+  "scripts": {
+    "start": "node vuln_js/app.js"
+  }
+}

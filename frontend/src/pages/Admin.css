@@ -1,0 +1,81 @@
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.stat-value {
+  display: block;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.admin-section {
+  margin-bottom: 1.5rem;
+}
+
+.admin-section h2 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.status-pill {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pill.completed {
+  background: rgba(22, 163, 74, 0.2);
+  color: var(--low);
+}
+
+.status-pill.failed {
+  background: rgba(220, 38, 38, 0.2);
+  color: var(--critical);
+}
+
+.status-pill.pending,
+.status-pill.sast_running,
+.status-pill.cve_running,
+.status-pill.ai_running {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--primary);
+}
