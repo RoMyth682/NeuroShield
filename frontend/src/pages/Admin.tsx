@@ -50,11 +50,19 @@ export default function Admin() {
 
   if (me?.role !== "admin") return <Navigate to="/" replace />;
 
+  const [deleteError, setDeleteError] = useState<string>("");
+
   const deleteUser = async (id: number, email: string) => {
     if (!confirm(`Delete user "${email}"? All their scans will also be removed.`)) return;
-    await adminApi.deleteUser(id);
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+    setDeleteError("");
+    try {
+      await adminApi.deleteUser(id);
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+    } catch (e: any) {
+      setDeleteError(e?.response?.data?.detail ?? "Failed to delete user. Please restart the backend and try again.");
+    }
   };
+
 
   const toggleRole = async (u: User) => {
     const newRole = u.role === "admin" ? "developer" : "admin";
@@ -140,6 +148,7 @@ export default function Admin() {
       {/* Users Tab */}
       {activeTab === "users" && (
         <div className="admin-section card">
+          {deleteError && <div className="error-banner" style={{ marginBottom: "1rem" }}>⚠️ {deleteError}</div>}
           <div className="section-top">
             <h2>Registered Users</h2>
             <input

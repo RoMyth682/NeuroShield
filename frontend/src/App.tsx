@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { Login, Register } from "./pages/Auth";
@@ -9,12 +9,18 @@ import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 
+const AUTH_ROUTES = ["/login", "/register"];
+
 export default function App() {
+  const location = useLocation();
+  const hideNav = AUTH_ROUTES.includes(location.pathname);
+
   return (
     <>
-      <Navbar />
+      {!hideNav && <Navbar />}
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route

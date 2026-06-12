@@ -59,8 +59,23 @@ def delete_user(user_id: int, db: Session = Depends(get_db), admin: User = Depen
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Step 1: Get all scan session IDs for this user
+    from app.models.scan import ScanFinding, ScanSession
+    session_ids = [s.id for s in db.query(ScanSession.id).filter(ScanSession.user_id == user_id).all()]
+
+    # Step 2: Delete all findings for those sessions
+    if session_ids:
+        db.query(ScanFinding).filter(ScanFinding.session_id.in_(session_ids)).delete(synchronize_session=False)
+
+    # Step 3: Delete all scan sessions for this user
+    db.query(ScanSession).filter(ScanSession.user_id == user_id).delete(synchronize_session=False)
+
+    # Step 4: Delete the user
     db.delete(user)
     db.commit()
+
+
 
 
 class RolePatch(BaseModel):

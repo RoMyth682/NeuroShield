@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth import hash_password
 from app.config import settings
 from app.database import Base, SessionLocal, engine
+from app.models.scan import ScanSession, ScanStatus
 from app.models.user import User, UserRole
 from app.routers import admin, auth, scan, settings as settings_router
 
@@ -19,6 +20,7 @@ async def lifespan(_: FastAPI):
     settings.upload_path.mkdir(parents=True, exist_ok=True)
     settings.reports_path.mkdir(parents=True, exist_ok=True)
     _seed_admin()
+    _reset_stuck_scans()
     yield
 
 
@@ -42,6 +44,29 @@ def _seed_admin():
             )
             db.add(admin_user)
             db.commit()
+    finally:
+        db.close()
+
+
+def _reset_stuck_scans():
+    """Mark any scan still in a running state as FAILED on startup.
+    This cleans up scans that were interrupted by a server restart."""
+    stuck_statuses = [
+        ScanStatus.PENDING,
+        ScanStatus.EXTRACTING,
+        ScanStatus.SAST_RUNNING,
+        ScanStatus.CVE_RUNNING,
+        ScanStatus.AI_RUNNING,
+    ]
+    db: Session = SessionLocal()
+    try:
+        stuck = db.query(ScanSession).filter(ScanSession.status.in_(stuck_statuses)).all()
+        for s in stuck:
+            s.status = ScanStatus.FAILED
+            s.error_message = "Scan was interrupted because the server restarted. Please re-upload and scan again."
+        if stuck:
+            db.commit()
+            print(f"[startup] Reset {len(stuck)} stuck scan(s) to FAILED.")
     finally:
         db.close()
 

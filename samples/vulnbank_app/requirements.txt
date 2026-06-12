@@ -1,0 +1,16 @@
+# VulnBank - Vulnerable dependencies for CVE scanning demo
+# WARNING: These versions are intentionally outdated and contain known CVEs.
+# NeuroShield will detect these via its CVE dependency scanner (OSV.dev).
+
+Flask==0.12.2              # CVE-2018-1000656 - Denial of Service via large cookie
+Werkzeug==0.14.1           # CVE-2019-14806 - Predictable temporary filenames
+requests==2.18.0           # CVE-2018-18074 - Credentials sent to redirected HTTP URLs
+urllib3==1.22              # CVE-2018-20060 - Header injection via CRLF
+Pillow==5.0.0              # CVE-2021-25292 - ReDoS and buffer overflow
+PyYAML==3.13               # CVE-2017-18342 - Arbitrary code execution via yaml.load()
+cryptography==2.1.4        # CVE-2018-10903 - Weak key generation
+lxml==3.5.0                # CVE-2021-28957 - XSS via HTML cleaner
+paramiko==2.0.8            # CVE-2018-7750 - Authentication bypass
+Django==2.0.1              # CVE-2019-3498 - Open redirect / content spoofing
+sqlalchemy==1.1.0          # Known issues with older versions
+jinja2==2.9.0              # CVE-2016-10745 - Sandbox escape
