@@ -17,9 +17,6 @@ ENV_PATH = Path(__file__).resolve().parent.parent.parent / ".env"
 GROQ_MODELS = [
     {"id": "llama-3.1-8b-instant",         "name": "Llama 3.1 8B Instant (Fast)",          "provider": "groq"},
     {"id": "llama-3.3-70b-versatile",       "name": "Llama 3.3 70B Versatile (Smart)",      "provider": "groq"},
-    {"id": "llama3-70b-8192",               "name": "Llama 3 70B (Legacy)",                 "provider": "groq"},
-    {"id": "gemma2-9b-it",                  "name": "Gemma 2 9B (Google)",                  "provider": "groq"},
-    {"id": "mixtral-8x7b-32768",            "name": "Mixtral 8x7B (Mistral)",               "provider": "groq"},
     {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout 17B",       "provider": "groq"},
 ]
 
@@ -31,8 +28,9 @@ OPENAI_MODELS = [
 ]
 
 GEMINI_MODELS = [
-    {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash (Free)",    "provider": "gemini"},
-    {"id": "gemini-1.5-pro",   "name": "Gemini 1.5 Pro",             "provider": "gemini"},
+    {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash (Free)",    "provider": "gemini"},
+    {"id": "gemini-3.5-flash", "name": "Gemini 3.5 Flash",           "provider": "gemini"},
+    {"id": "gemini-2.5-pro",   "name": "Gemini 2.5 Pro",             "provider": "gemini"},
 ]
 
 
@@ -53,6 +51,8 @@ class AISettingsPatch(BaseModel):
     gemini_api_key: Optional[str] = None
     groq_model: Optional[str] = None
     openai_model: Optional[str] = None
+    gemini_model: Optional[str] = None
+    active_provider: Optional[str] = None
 
 
 def _mask(key: str) -> str:
@@ -64,6 +64,14 @@ def _mask(key: str) -> str:
 
 
 def _active_provider() -> str:
+    if settings.active_provider in ("groq", "openai", "gemini"):
+        if settings.active_provider == "groq" and settings.groq_api_key:
+            return "groq"
+        if settings.active_provider == "gemini" and settings.gemini_api_key:
+            return "gemini"
+        if settings.active_provider == "openai" and settings.openai_api_key:
+            return "openai"
+
     if settings.groq_api_key:
         return "groq"
     if settings.gemini_api_key:
@@ -80,8 +88,7 @@ def _active_model() -> str:
     if provider == "openai":
         return settings.openai_model
     if provider == "gemini":
-        gemini_model_env = _read_env_key("GEMINI_MODEL")
-        return gemini_model_env or "gemini-1.5-flash"
+        return settings.gemini_model or "gemini-2.5-flash"
     return "none"
 
 
@@ -173,6 +180,14 @@ def update_settings(
     if patch.openai_model is not None:
         env_updates["OPENAI_MODEL"] = patch.openai_model
         settings.openai_model = patch.openai_model
+
+    if patch.gemini_model is not None:
+        env_updates["GEMINI_MODEL"] = patch.gemini_model
+        settings.gemini_model = patch.gemini_model
+
+    if patch.active_provider is not None:
+        env_updates["ACTIVE_PROVIDER"] = patch.active_provider
+        settings.active_provider = patch.active_provider
 
     if env_updates:
         _write_env_keys(env_updates)

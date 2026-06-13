@@ -1,3 +1,5 @@
+# Backup if the expanded semgrep.yml doesn't work
+
 rules:
   - id: neuroshield-sql-injection-format
     languages: [python]

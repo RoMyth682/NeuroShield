@@ -22,6 +22,8 @@ export default function Settings() {
   const [geminiKey, setGeminiKey] = useState("");
   const [groqModel, setGroqModel] = useState("");
   const [openaiModel, setOpenaiModel] = useState("");
+  const [geminiModel, setGeminiModel] = useState("");
+  const [activeProv, setActiveProv] = useState("");
 
   useEffect(() => {
     load();
@@ -35,6 +37,8 @@ export default function Settings() {
       setCfg(data);
       setGroqModel(data.active_provider === "groq" ? data.active_model : data.groq_models[0]?.id ?? "");
       setOpenaiModel(data.active_provider === "openai" ? data.active_model : data.openai_models[0]?.id ?? "");
+      setGeminiModel(data.active_provider === "gemini" ? data.active_model : data.gemini_models[0]?.id ?? "");
+      setActiveProv(data.active_provider || "none");
     } catch (e: any) {
       setError(e?.response?.data?.detail ?? "Failed to load settings. Admin access required.");
     } finally {
@@ -52,6 +56,8 @@ export default function Settings() {
       if (geminiKey)  patch.gemini_api_key = geminiKey;
       if (groqModel)  patch.groq_model     = groqModel;
       if (openaiModel) patch.openai_model  = openaiModel;
+      if (geminiModel) patch.gemini_model  = geminiModel;
+      if (activeProv)  patch.active_provider = activeProv;
 
       const { data } = await settingsApi.update(patch);
       setCfg(data);
@@ -86,7 +92,7 @@ export default function Settings() {
     );
   }
 
-  const provider = cfg?.active_provider ?? "none";
+  const provider = activeProv;
   const providerInfo = PROVIDER_LABELS[provider] ?? PROVIDER_LABELS.none;
 
   const allModels: AIModel[] = [
@@ -146,14 +152,18 @@ export default function Settings() {
               {(cfg?.groq_models ?? []).map((m) => (
                 <label
                   key={m.id}
-                  className={`model-card ${groqModel === m.id ? "selected" : ""} ${provider !== "groq" ? "inactive-provider" : ""}`}
+                  className={`model-card ${groqModel === m.id ? "selected" : ""} ${!cfg?.groq_api_key ? "inactive-provider" : ""}`}
                 >
                   <input
                     type="radio"
                     name="groq_model"
                     value={m.id}
                     checked={groqModel === m.id}
-                    onChange={() => setGroqModel(m.id)}
+                    disabled={!cfg?.groq_api_key}
+                    onChange={() => {
+                      setGroqModel(m.id);
+                      setActiveProv("groq");
+                    }}
                   />
                   <div className="model-card-body">
                     <span className="model-name">{m.name}</span>
@@ -177,14 +187,18 @@ export default function Settings() {
               {(cfg?.openai_models ?? []).map((m) => (
                 <label
                   key={m.id}
-                  className={`model-card ${openaiModel === m.id ? "selected" : ""} ${provider !== "openai" ? "inactive-provider" : ""}`}
+                  className={`model-card ${openaiModel === m.id ? "selected" : ""} ${!cfg?.openai_api_key ? "inactive-provider" : ""}`}
                 >
                   <input
                     type="radio"
                     name="openai_model"
                     value={m.id}
                     checked={openaiModel === m.id}
-                    onChange={() => setOpenaiModel(m.id)}
+                    disabled={!cfg?.openai_api_key}
+                    onChange={() => {
+                      setOpenaiModel(m.id);
+                      setActiveProv("openai");
+                    }}
                   />
                   <div className="model-card-body">
                     <span className="model-name">{m.name}</span>
@@ -208,14 +222,24 @@ export default function Settings() {
               {(cfg?.gemini_models ?? []).map((m) => (
                 <label
                   key={m.id}
-                  className={`model-card inactive-provider`}
+                  className={`model-card ${geminiModel === m.id ? "selected" : ""} ${!cfg?.gemini_api_key ? "inactive-provider" : ""}`}
                 >
-                  <input type="radio" name="gemini_model" value={m.id} disabled />
+                  <input
+                    type="radio"
+                    name="gemini_model"
+                    value={m.id}
+                    checked={geminiModel === m.id}
+                    disabled={!cfg?.gemini_api_key}
+                    onChange={() => {
+                      setGeminiModel(m.id);
+                      setActiveProv("gemini");
+                    }}
+                  />
                   <div className="model-card-body">
                     <span className="model-name">{m.name}</span>
                     <span className="model-id">{m.id}</span>
                   </div>
-                  {provider === "gemini" && cfg?.active_model === m.id && (
+                  {geminiModel === m.id && provider === "gemini" && (
                     <span className="model-active-badge">Active</span>
                   )}
                 </label>

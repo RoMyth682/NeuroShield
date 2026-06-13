@@ -11,7 +11,8 @@ export default function Navbar() {
       <div className="container navbar-inner">
         <Link to="/" className="navbar-brand">
           <span className="brand-icon">🛡️</span>
-          NeuroShield
+          <span className="brand-name">NeuroShield</span>
+          <span className="brand-tagline">Autonomous Code Security Intelligence Engine</span>
         </Link>
         <div className="navbar-links">
           {user ? (

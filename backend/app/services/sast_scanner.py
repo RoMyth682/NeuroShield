@@ -4,7 +4,6 @@ import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-
 from app.config import settings
 from app.models.scan import Severity
 from app.services.risk_scoring import bandit_to_severity, semgrep_to_severity

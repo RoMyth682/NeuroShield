@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -244,8 +245,6 @@ def explain_finding(
             detail=f"Failed to generate explanation: {str(e)}",
         )
 
-
-from pydantic import BaseModel
 
 class ChatMessage(BaseModel):
     role: str

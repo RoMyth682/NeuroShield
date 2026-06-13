@@ -1,10 +1,9 @@
+import shutil
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-
 from app.auth import hash_password
 from app.config import settings
 from app.database import Base, SessionLocal, engine
@@ -22,6 +21,25 @@ async def lifespan(_: FastAPI):
     _seed_admin()
     _reset_stuck_scans()
     yield
+    _cleanup_files()
+
+
+def _cleanup_files():
+    try:
+        if settings.upload_path.exists():
+            for item in settings.upload_path.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item, ignore_errors=True)
+                else:
+                    item.unlink(missing_ok=True)
+        if settings.reports_path.exists():
+            for item in settings.reports_path.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item, ignore_errors=True)
+                else:
+                    item.unlink(missing_ok=True)
+    except Exception:
+        pass
 
 
 def _migrate_schema():

@@ -8,7 +8,6 @@ export default function Home() {
   return (
     <div className="home">
       <section className="hero container">
-        <div className="hero-badge">Autonomous Code Security Intelligence Engine</div>
         <h1>
           Detect vulnerabilities.
           <br />

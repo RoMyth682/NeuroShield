@@ -1,10 +1,8 @@
 from pathlib import Path
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-
 from app.auth import require_admin
 from app.config import settings
 from app.database import get_db
@@ -16,7 +14,6 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 RULES_PATH = Path(__file__).resolve().parent.parent / "rules" / "owasp-semgrep.yaml"
 
-
 def _user_with_scan_count(user: User, db: Session) -> dict:
     scan_count = db.query(func.count(ScanSession.id)).filter(ScanSession.user_id == user.id).scalar() or 0
     return {
@@ -26,7 +23,6 @@ def _user_with_scan_count(user: User, db: Session) -> dict:
         "created_at": user.created_at,
         "scan_count": scan_count,
     }
-
 
 @router.get("/stats")
 def get_stats(db: Session = Depends(get_db), _: User = Depends(require_admin)):
@@ -45,12 +41,10 @@ def get_stats(db: Session = Depends(get_db), _: User = Depends(require_admin)):
         "total_users": total_users,
     }
 
-
 @router.get("/users")
 def list_users(db: Session = Depends(get_db), _: User = Depends(require_admin)):
     users = db.query(User).order_by(User.created_at.desc()).all()
     return [_user_with_scan_count(u, db) for u in users]
-
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
@@ -75,12 +69,9 @@ def delete_user(user_id: int, db: Session = Depends(get_db), admin: User = Depen
     db.delete(user)
     db.commit()
 
-
-
-
 class RolePatch(BaseModel):
+    # Patch model for changing a user's role. Developer is just a normal user with no special permissions.
     role: str  # "admin" or "developer"
-
 
 @router.patch("/users/{user_id}/role")
 def change_user_role(
@@ -100,7 +91,6 @@ def change_user_role(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid role: {body.role}")
     db.commit()
     return _user_with_scan_count(user, db)
-
 
 @router.get("/scans")
 def list_scans(db: Session = Depends(get_db), _: User = Depends(require_admin)):
@@ -123,7 +113,6 @@ def list_scans(db: Session = Depends(get_db), _: User = Depends(require_admin)):
         }
         for s, email in sessions
     ]
-
 
 @router.get("/rules")
 def get_rules(_: User = Depends(require_admin)):

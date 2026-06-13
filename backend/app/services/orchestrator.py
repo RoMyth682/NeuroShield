@@ -1,15 +1,12 @@
-import json
 import shutil
 import zipfile
+import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-
 from sqlalchemy.orm import Session
-
 from app.config import settings
 from app.models.scan import FindingType, ScanFinding, ScanSession, ScanStatus, Severity
-
-from concurrent.futures import ThreadPoolExecutor
 from app.services.ai_explainer import AIExplainer
 from app.services.cve_scanner import CVEScanner
 from app.services.report_generator import ReportGenerator

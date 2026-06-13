@@ -1,9 +1,6 @@
 from datetime import datetime
-
 from pydantic import BaseModel
-
 from app.models.scan import FindingType, ScanStatus, Severity
-
 
 class ScanUploadResponse(BaseModel):
     session_id: int
@@ -11,13 +8,11 @@ class ScanUploadResponse(BaseModel):
     files: list[str]
     message: str
 
-
 class ScanStatusResponse(BaseModel):
     session_id: int
     status: ScanStatus
     message: str
     error_message: str | None = None
-
 
 class FindingResponse(BaseModel):
     id: int
@@ -40,14 +35,12 @@ class FindingResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-
 class SeveritySummary(BaseModel):
     critical: int = 0
     high: int = 0
     medium: int = 0
     low: int = 0
     total: int = 0
-
 
 class ScanResultsResponse(BaseModel):
     session_id: int

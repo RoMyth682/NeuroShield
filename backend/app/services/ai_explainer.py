@@ -1,10 +1,9 @@
 import json
 import re
+import httpx
 from dataclasses import dataclass
 from pathlib import Path
-
 from openai import OpenAI
-
 from app.config import settings
 
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "vulnerability_explanation.txt"
@@ -43,19 +42,43 @@ class AIExplanation:
 
 class AIExplainer:
     def __init__(self) -> None:
-        self.client = None
-        self.model = settings.openai_model
-        
+        self.prompt_template = PROMPT_PATH.read_text(encoding="utf-8") if PROMPT_PATH.exists() else ""
+        self._setup_client()
+
+    def _resolve_active_provider(self) -> str:
+        if settings.active_provider in ("groq", "openai", "gemini"):
+            if settings.active_provider == "groq" and settings.groq_api_key:
+                return "groq"
+            if settings.active_provider == "gemini" and settings.gemini_api_key:
+                return "gemini"
+            if settings.active_provider == "openai" and settings.openai_api_key:
+                return "openai"
+
+        # fallback to priority
         if settings.groq_api_key:
+            return "groq"
+        if settings.gemini_api_key:
+            return "gemini"
+        if settings.openai_api_key:
+            return "openai"
+        return "none"
+
+    def _setup_client(self) -> None:
+        self.client = None
+        self.gemini_model = settings.gemini_model or "gemini-2.5-flash"
+        
+        active = self._resolve_active_provider()
+        if active == "groq":
             self.client = OpenAI(
                 api_key=settings.groq_api_key,
                 base_url="https://api.groq.com/openai/v1"
             )
             self.model = settings.groq_model or "llama-3.1-8b-instant"
-        elif settings.openai_api_key:
+        elif active == "openai":
             self.client = OpenAI(api_key=settings.openai_api_key)
-            
-        self.prompt_template = PROMPT_PATH.read_text(encoding="utf-8") if PROMPT_PATH.exists() else ""
+            self.model = settings.openai_model
+        else:
+            self.model = "none"
 
     @property
     def is_available(self) -> bool:
@@ -74,7 +97,8 @@ class AIExplainer:
         description: str | None,
         code_snippet: str | None,
     ) -> AIExplanation:
-        if settings.gemini_api_key:
+        self._setup_client()
+        if self._resolve_active_provider() == "gemini":
             prompt = self.prompt_template.format(
                 title=title,
                 finding_type=finding_type,
@@ -110,6 +134,7 @@ class AIExplainer:
                     {"role": "system", "content": "You are a security expert. Respond only with valid JSON."},
                     {"role": "user", "content": prompt},
                 ],
+                response_format={"type": "json_object"},
                 temperature=settings.ai_temperature,
                 max_tokens=settings.ai_max_tokens,
                 timeout=settings.ai_timeout,
@@ -127,7 +152,7 @@ class AIExplainer:
             return self._fallback(title, description, f"{type(e).__name__}: {str(e)}")
 
     def _explain_with_gemini(self, prompt: str) -> AIExplanation:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={settings.gemini_api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:generateContent?key={settings.gemini_api_key}"
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{
@@ -138,7 +163,6 @@ class AIExplainer:
             }
         }
         try:
-            import httpx
             r = httpx.post(url, headers=headers, json=payload, timeout=settings.ai_timeout)
             r.raise_for_status()
             data = r.json()
@@ -161,6 +185,7 @@ class AIExplainer:
         new_message: str,
         history: list,
     ) -> str:
+        self._setup_client()
         context = (
             f"Vulnerability Title: {finding.title}\n"
             f"Severity: {finding.severity.value}\n"
@@ -184,7 +209,7 @@ class AIExplainer:
             messages.append({"role": role, "content": content})
         messages.append({"role": "user", "content": new_message})
 
-        if settings.gemini_api_key:
+        if self._resolve_active_provider() == "gemini":
             return self._chat_with_gemini(messages)
         elif self.client:
             try:
@@ -217,11 +242,10 @@ class AIExplainer:
                 })
         
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={settings.gemini_api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:generateContent?key={settings.gemini_api_key}"
             headers = {"Content-Type": "application/json"}
             payload = {"contents": contents}
             
-            import httpx
             r = httpx.post(url, headers=headers, json=payload, timeout=15.0)
             r.raise_for_status()
             data = r.json()
@@ -231,7 +255,13 @@ class AIExplainer:
 
     def _fallback(self, title: str, description: str | None, error_detail: str | None = None) -> AIExplanation:
         notice = ""
-        if error_detail:
+        # Check both description and error_detail for auth/token/quota/key problems
+        check_text = (error_detail or "") + " " + (description or "")
+        lower_err = check_text.lower()
+        
+        if any(word in lower_err for word in ["expire", "unauthorized", "401", "429", "quota", "token", "limit", "invalid", "credential", "key"]):
+            notice = "⚠️ AI Explanation failed: API key has expired, is invalid, or free usage tokens/quota have been exhausted. Please configure a valid API key in settings.\n\n"
+        elif error_detail:
             notice = f"⚠️ AI Explanation generation failed ({error_detail}). Showing static fallback guidance.\n\n"
         else:
             notice = "⚠️ AI Explanation temporarily unavailable. Showing static fallback guidance.\n\n"
