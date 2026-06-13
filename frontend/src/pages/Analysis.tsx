@@ -43,7 +43,8 @@ export default function Analysis() {
     };
 
     poll();
-    const interval = setInterval(poll, 2000);
+    const pollInterval = Number(import.meta.env.VITE_POLL_INTERVAL_MS) || 2000;
+    const interval = setInterval(poll, pollInterval);
     return () => clearInterval(interval);
   }, [sessionId, navigate]);
 

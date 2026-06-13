@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { scanApi } from "../api/client";
 import "./Upload.css";
 
-const ALLOWED = [".py", ".js", ".java", ".zip", ".ts", ".jsx", ".tsx"];
-const MAX_MB = 10;
+const ALLOWED = (import.meta.env.VITE_ALLOWED_EXTENSIONS ||
+  ".py,.js,.java,.zip,.ts,.jsx,.tsx,.go,.php,.rb,.cs,.c,.cpp,.h,.hpp,.rs,.kt,.swift,.dart,.sh,.bash,.ps1,.html,.htm,.css,.scss,.json,.yaml,.yml,.xml,.txt,.gradle,.erl,.ex"
+).split(",");
+const MAX_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB) || 10;
 
 export default function Upload() {
   const navigate = useNavigate();

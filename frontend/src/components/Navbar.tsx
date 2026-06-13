@@ -11,13 +11,15 @@ export default function Navbar() {
       <div className="container navbar-inner">
         <Link to="/" className="navbar-brand">
           <span className="brand-icon">🛡️</span>
-          NeuroShield
+          <span className="brand-name">NeuroShield</span>
+          <span className="brand-tagline">Autonomous Code Security Intelligence Engine</span>
         </Link>
         <div className="navbar-links">
           {user ? (
             <>
               <Link to="/upload">Scan</Link>
               {user.role === "admin" && <Link to="/admin">Admin</Link>}
+              {user.role === "admin" && <Link to="/settings">⚙️ Settings</Link>}
               <span className="user-email">{user.email}</span>
               <button
                 className="btn btn-secondary"

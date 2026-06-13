@@ -155,10 +155,14 @@ Step 2 — Go to "Scan" (upload page)
 Step 3 — Upload test code
   Use the included sample project:
 
-    Folder:  samples\vulnerable_app\
+    Folder:  samples\
 
   BEST TEST: Zip the vulnerable_app folder and upload the .zip file
              (includes both app.py AND requirements.txt)
+
+  GO TEST:   Upload samples\vuln_go_app.go (contains 9 vulnerabilities!)
+  
+  JAVA TEST: Upload samples\VulnerableJavaApp.java
 
   QUICK TEST: Upload only samples\vulnerable_app\app.py
 
@@ -186,6 +190,24 @@ Step 6 — Download PDF Report
 
   samples\vulnerable_app\requirements.txt has old package versions
   that may match known CVEs when checked against OSV.dev / NVD.
+
+  samples\vuln_go_app.go contains 9 vulnerabilities:
+    • SQL Injection via fmt.Sprintf
+    • Command Injection via exec.Command
+    • Path Traversal via filepath.Join
+    • SSRF (Server-Side Request Forgery)
+    • Weak Cryptography (MD5)
+    • Hardcoded credentials & JWT secrets
+    • Insecure temp file creation
+    • CORS wildcard policy
+    • Sensitive data exposure in logs (passwords, tokens)
+
+  samples\VulnerableJavaApp.java contains:
+    • Hardcoded credentials
+    • SQL injection
+    • Command injection
+    • Path traversal
+    • Weak hashing (SHA-1)
 
 
 --------------------------------------------------------------------------------

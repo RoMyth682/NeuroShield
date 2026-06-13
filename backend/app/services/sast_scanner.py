@@ -4,7 +4,7 @@ import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-
+from app.config import settings
 from app.models.scan import Severity
 from app.services.risk_scoring import bandit_to_severity, semgrep_to_severity
 
@@ -101,11 +101,15 @@ class SASTScanner:
         result = SASTResult()
         proc = None
         try:
+            # NO_COLOR + PYTHONIOENCODING suppress the rich/terminal crash on Windows
+            import os
+            env = {**os.environ, "NO_COLOR": "1", "PYTHONIOENCODING": "utf-8", "TERM": "dumb"}
             proc = subprocess.run(
                 self._bandit_command(root),
                 capture_output=True,
                 text=True,
-                timeout=25,
+                timeout=settings.bandit_timeout,
+                env=env,
             )
             output = proc.stdout.strip()
             stderr = (proc.stderr or "").strip()
@@ -115,8 +119,12 @@ class SASTScanner:
                     result.errors.append(
                         "Bandit is not installed. In backend folder run: pip install -r requirements.txt"
                     )
+                elif "Traceback" in stderr or "KeyboardInterrupt" in stderr:
+                    # Suppress full Python traceback — just note Bandit had an internal error
+                    result.errors.append("Bandit encountered an internal error and was skipped. Semgrep results are still shown.")
                 else:
-                    result.errors.append(stderr)
+                    # Cap to 300 chars to avoid flooding warnings
+                    result.errors.append(stderr[:300])
                 return result
 
             if output:
@@ -142,7 +150,7 @@ class SASTScanner:
             )
         except json.JSONDecodeError as exc:
             result.errors.append(f"Failed to parse Bandit output: {exc}")
-            if proc.stderr.strip():
+            if proc and proc.stderr and proc.stderr.strip():
                 result.errors.append(proc.stderr.strip()[:300])
         except subprocess.TimeoutExpired:
             result.errors.append("Bandit scan timed out after 25 seconds")
@@ -170,7 +178,7 @@ class SASTScanner:
         elif default_config.exists():
             config = str(default_config)
         else:
-            config = "p/security-audit"
+            config = settings.semgrep_default_config
 
         try:
             with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
@@ -190,7 +198,7 @@ class SASTScanner:
                 ],
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=settings.semgrep_timeout,
             )
             output_path = Path(output_file)
 

@@ -1,15 +1,15 @@
+import shutil
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-
 from app.auth import hash_password
 from app.config import settings
 from app.database import Base, SessionLocal, engine
+from app.models.scan import ScanSession, ScanStatus
 from app.models.user import User, UserRole
-from app.routers import admin, auth, scan
+from app.routers import admin, auth, scan, settings as settings_router
 
 
 @asynccontextmanager
@@ -19,7 +19,27 @@ async def lifespan(_: FastAPI):
     settings.upload_path.mkdir(parents=True, exist_ok=True)
     settings.reports_path.mkdir(parents=True, exist_ok=True)
     _seed_admin()
+    _reset_stuck_scans()
     yield
+    _cleanup_files()
+
+
+def _cleanup_files():
+    try:
+        if settings.upload_path.exists():
+            for item in settings.upload_path.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item, ignore_errors=True)
+                else:
+                    item.unlink(missing_ok=True)
+        if settings.reports_path.exists():
+            for item in settings.reports_path.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item, ignore_errors=True)
+                else:
+                    item.unlink(missing_ok=True)
+    except Exception:
+        pass
 
 
 def _migrate_schema():
@@ -36,8 +56,8 @@ def _seed_admin():
     try:
         if not db.query(User).filter(User.role == UserRole.ADMIN).first():
             admin_user = User(
-                email="admin@neuroshield.local",
-                hashed_password=hash_password("admin123"),
+                email=settings.admin_email,
+                hashed_password=hash_password(settings.admin_password),
                 role=UserRole.ADMIN,
             )
             db.add(admin_user)
@@ -46,16 +66,39 @@ def _seed_admin():
         db.close()
 
 
+def _reset_stuck_scans():
+    """Mark any scan still in a running state as FAILED on startup.
+    This cleans up scans that were interrupted by a server restart."""
+    stuck_statuses = [
+        ScanStatus.PENDING,
+        ScanStatus.EXTRACTING,
+        ScanStatus.SAST_RUNNING,
+        ScanStatus.CVE_RUNNING,
+        ScanStatus.AI_RUNNING,
+    ]
+    db: Session = SessionLocal()
+    try:
+        stuck = db.query(ScanSession).filter(ScanSession.status.in_(stuck_statuses)).all()
+        for s in stuck:
+            s.status = ScanStatus.FAILED
+            s.error_message = "Scan was interrupted because the server restarted. Please re-upload and scan again."
+        if stuck:
+            db.commit()
+            print(f"[startup] Reset {len(stuck)} stuck scan(s) to FAILED.")
+    finally:
+        db.close()
+
+
 app = FastAPI(
-    title="NeuroShield API",
-    description="Autonomous Code Security Intelligence Engine",
-    version="1.0.0",
+    title=settings.app_name,
+    description=settings.app_description,
+    version=settings.app_version,
     lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,15 +107,15 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(scan.router)
 app.include_router(admin.router)
+app.include_router(settings_router.router)
 
 
 @app.get("/")
 def root():
     return {
-        "service": "NeuroShield API",
+        "service": settings.app_name,
         "status": "running",
         "message": "This is the backend API. Open the web app or API docs below.",
-        "frontend": "http://localhost:5173",
         "docs": "/docs",
         "health": "/api/health",
     }

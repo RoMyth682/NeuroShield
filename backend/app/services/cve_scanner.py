@@ -1,15 +1,13 @@
 import json
 import re
+import tomllib
+import xml.etree.ElementTree as ET
+import httpx
 from dataclasses import dataclass, field
 from pathlib import Path
-
-import httpx
-
+from app.config import settings
 from app.models.scan import Severity
 from app.services.risk_scoring import cvss_to_severity
-
-OSV_API = "https://api.osv.dev/v1/query"
-NVD_API = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
 
 @dataclass
@@ -44,15 +42,39 @@ class CVEScanner:
         result.packages_checked = len(dependencies)
 
         if not dependencies:
-            result.errors.append("No dependency manifest files found (requirements.txt, package.json, pom.xml)")
+            manifest_names = {"requirements.txt", "package.json", "pom.xml", "go.mod", "Cargo.toml"}
+            has_any_manifest = False
+            try:
+                for p in root.rglob("*"):
+                    if p.is_file() and p.name in manifest_names:
+                        if p.name == "package.json" and "node_modules" in p.parts:
+                            continue
+                        has_any_manifest = True
+                        break
+            except Exception:
+                pass
+
+            if has_any_manifest:
+                result.errors.append(
+                    "Dependency manifest files were found, but no dependencies with valid versions could be parsed. "
+                    "Make sure dependencies are specified with clear version constraints (e.g. package==version, package>=version)."
+                )
+            else:
+                result.errors.append(
+                    "No dependency manifest files found — expected if you uploaded a single source file. "
+                    "For CVE scanning, include a requirements.txt, package.json, pom.xml, go.mod, or Cargo.toml with your code."
+                )
             return result
 
-        with httpx.Client(timeout=15.0) as client:
-            for dep in dependencies[:50]:
+        with httpx.Client(timeout=settings.cve_http_timeout) as client:
+            for dep in dependencies[:settings.cve_max_packages]:
                 try:
                     findings = self._query_osv(client, dep)
                     if not findings:
-                        findings = self._query_nvd(client, dep)
+                        try:
+                            findings = self._query_nvd(client, dep)
+                        except (httpx.TimeoutException, httpx.HTTPError):
+                            findings = []
                     result.findings.extend(findings)
                 except httpx.TimeoutException:
                     result.errors.append(f"CVE API timeout while checking {dep.name}")
@@ -71,6 +93,10 @@ class CVEScanner:
             deps.extend(self._parse_package_json(pkg))
         for pom in root.rglob("pom.xml"):
             deps.extend(self._parse_pom(pom))
+        for go_mod in root.rglob("go.mod"):
+            deps.extend(self._parse_go_mod(go_mod))
+        for cargo_toml in root.rglob("Cargo.toml"):
+            deps.extend(self._parse_cargo_toml(cargo_toml))
         return deps
 
     def _parse_requirements(self, path: Path) -> list[Dependency]:
@@ -79,9 +105,9 @@ class CVEScanner:
             line = line.strip()
             if not line or line.startswith("#") or line.startswith("-"):
                 continue
-            match = re.match(r"^([a-zA-Z0-9_\-\.]+)\s*==\s*([^\s;]+)", line)
+            match = re.match(r"^([a-zA-Z0-9_\-\.]+)\s*([>=<~]+)\s*([^\s,;]+)", line)
             if match:
-                deps.append(Dependency(name=match.group(1).lower(), version=match.group(2), ecosystem="PyPI"))
+                deps.append(Dependency(name=match.group(1).lower(), version=match.group(3), ecosystem="PyPI"))
         return deps
 
     def _parse_package_json(self, path: Path) -> list[Dependency]:
@@ -99,20 +125,78 @@ class CVEScanner:
 
     def _parse_pom(self, path: Path) -> list[Dependency]:
         deps = []
-        content = path.read_text(encoding="utf-8", errors="ignore")
-        for match in re.finditer(
-            r"<artifactId>([^<]+)</artifactId>\s*<version>([^<]+)</version>",
-            content,
-        ):
-            deps.append(Dependency(name=match.group(1), version=match.group(2), ecosystem="Maven"))
+        try:
+            tree = ET.parse(path)
+            root = tree.getroot()
+            
+            def clean_tag(tag):
+                return tag.split('}')[-1] if '}' in tag else tag
+                
+            for elem in root.iter():
+                if clean_tag(elem.tag) == "dependency":
+                    art_id = None
+                    ver = None
+                    for child in elem:
+                        tag_name = clean_tag(child.tag)
+                        if tag_name == "artifactId":
+                            art_id = child.text
+                        elif tag_name == "version":
+                            ver = child.text
+                    if art_id and ver and not ver.startswith("${"):
+                        deps.append(Dependency(name=art_id.strip(), version=ver.strip(), ecosystem="Maven"))
+        except Exception:
+            content = path.read_text(encoding="utf-8", errors="ignore")
+            for match in re.finditer(
+                r"<artifactId>([^<]+)</artifactId>\s*<version>([^<]+)</version>",
+                content,
+            ):
+                deps.append(Dependency(name=match.group(1), version=match.group(2), ecosystem="Maven"))
         return deps
+
+    def _parse_go_mod(self, path: Path) -> list[Dependency]:
+        deps = []
+        try:
+            content = path.read_text(encoding="utf-8", errors="ignore")
+            for line in content.splitlines():
+                line = line.strip()
+                if not line or line.startswith("//") or line.startswith("module") or line.startswith("require"):
+                    continue
+                if re.match(r"^go\s+[0-9]", line):
+                    continue
+                match = re.match(r"^([a-zA-Z0-9\.\-_/]+)\s+(v[0-9]+\.[0-9]+\.[^\s]+)", line)
+                if match:
+                    deps.append(Dependency(name=match.group(1), version=match.group(2), ecosystem="Go"))
+        except Exception:
+            pass
+        return deps
+
+    def _parse_cargo_toml(self, path: Path) -> list[Dependency]:
+        deps = []
+        try:
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+            for section in ("dependencies", "dev-dependencies", "build-dependencies"):
+                for name, val in data.get(section, {}).items():
+                    version = None
+                    if isinstance(val, str):
+                        version = val
+                    elif isinstance(val, dict):
+                        version = val.get("version")
+                    
+                    if version:
+                        clean = re.sub(r"^[\^~>=<]+", "", str(version)).strip()
+                        if clean:
+                            deps.append(Dependency(name=name, version=clean, ecosystem="crates.io"))
+        except Exception:
+            pass
+        return deps
+
 
     def _query_osv(self, client: httpx.Client, dep: Dependency) -> list[CVEFinding]:
         payload = {
             "package": {"name": dep.name, "ecosystem": dep.ecosystem},
             "version": dep.version,
         }
-        response = client.post(OSV_API, json=payload)
+        response = client.post(settings.osv_api_url, json=payload)
         if response.status_code != 200:
             return []
 
@@ -126,7 +210,7 @@ class CVEScanner:
                     package_version=dep.version,
                     severity=cvss_to_severity(score),
                     cvss_score=score,
-                    description=vuln.get("summary", vuln.get("details", "Known vulnerability"))[:500],
+                    description=vuln.get("summary", vuln.get("details", "Known vulnerability"))[:settings.cve_description_max_length],
                     ecosystem=dep.ecosystem,
                 )
             )
@@ -134,7 +218,7 @@ class CVEScanner:
 
     def _query_nvd(self, client: httpx.Client, dep: Dependency) -> list[CVEFinding]:
         response = client.get(
-            NVD_API,
+            settings.nvd_api_url,
             params={"keywordSearch": f"{dep.name} {dep.version}", "resultsPerPage": 5},
         )
         if response.status_code != 200:
@@ -159,7 +243,7 @@ class CVEScanner:
                     package_version=dep.version,
                     severity=cvss_to_severity(score),
                     cvss_score=score,
-                    description=desc[:500],
+                    description=desc[:settings.cve_description_max_length],
                     ecosystem=dep.ecosystem,
                 )
             )

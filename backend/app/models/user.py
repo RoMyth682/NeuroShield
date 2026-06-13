@@ -21,4 +21,5 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.DEVELOPER)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    scan_sessions = relationship("ScanSession", back_populates="user")
+    scan_sessions = relationship("ScanSession", back_populates="user", cascade="all, delete-orphan")
+
